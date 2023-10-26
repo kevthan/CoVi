@@ -3,7 +3,7 @@ from utils import *
 
 
 def train_covi(args, src_train_loader, tgt_train_loader, optimizer, optimizer_emp, model, net_part1, emp_learner, entropy, cross_entropy, epoch):
-    print("Epoch: [{}/{}]".format(epoch, args.epochs))
+    print("Epoch: [{}/{}]".format(epoch+1, args.epochs))
     set_model_mode('train', [model, net_part1, emp_learner])
     for step, (src_data, tgt_data) in enumerate(zip(src_train_loader, tgt_train_loader)):
         src_imgs, src_labels = src_data
@@ -91,4 +91,19 @@ def train_covi(args, src_train_loader, tgt_train_loader, optimizer, optimizer_em
         optimizer.zero_grad()
         optimizer_emp.zero_grad()
         total_loss.backward()
+        optimizer.step()
+
+
+def train_src(args, src_train_loader, optimizer, model, cross_entropy, epoch):
+    print("Epoch: [{}/{}]".format(epoch+1, args.epochs))
+    set_model_mode('train', [model])
+    for step, src_data in enumerate(src_train_loader):
+        src_imgs, src_labels = src_data
+        src_imgs, src_labels = src_imgs.cuda(non_blocking=True), src_labels.cuda(non_blocking=True)
+
+        s_out = model(src_imgs)
+        loss = cross_entropy(s_out, src_labels)
+
+        optimizer.zero_grad()
+        loss.backward()
         optimizer.step()

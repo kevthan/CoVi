@@ -4,12 +4,12 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
-from network import models
+import models
 
 
 def get_data_info(args):
     if args.target in ['amazon', 'dslr', 'webcam']:  # Office-31
-        resnet_type = 50
+        resnet_type = 18
         num_classes = 31
     else:  # Office-Home
         resnet_type = 50
@@ -35,8 +35,8 @@ def get_dataset(domain_name, db_path):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             ]),
         }
-        tr_dataset = ImageFolder(db_path + '/office31/' + domain_name + '/', data_transforms['train'])
-        te_dataset = ImageFolder(db_path + '/office31/' + domain_name + '/', data_transforms['test'])
+        tr_dataset = ImageFolder(db_path + '/office31/' + domain_name + '/images/', data_transforms['train'])
+        te_dataset = ImageFolder(db_path + '/office31/' + domain_name + '/images/', data_transforms['test'])
 
     elif domain_name in ['art', 'product', 'clipart', 'realworld']:  # Office-Home
         data_transforms = {
@@ -75,21 +75,27 @@ def get_train_info():
 
 
 def get_net_info(num_classes):
-    net = nn.DataParallel(models.ResNet50().encoder).cuda()
-    head = nn.DataParallel(models.Head()).cuda()
-    classifier = nn.DataParallel(nn.Linear(256, num_classes)).cuda()
-    emp_learner = nn.DataParallel(models.EmpLearner()).cuda()
+    net = models.ResNet18().encoder.cuda()
+    head = models.Head().cuda()
+    classifier = nn.Linear(256, num_classes).cuda()
+    emp_learner = models.EmpLearner().cuda()
 
     return net, head, classifier, emp_learner
 
 
-def load_net(args, net, head, classifier, root):
-    print("Load pre-trained model !")
-    save_folder = root + args.baseline_path
-    net.module.load_state_dict(torch.load(save_folder + '/net.pt'), strict=False)
-    head.module.load_state_dict(torch.load(save_folder + '/head.pt'), strict=False)
-    classifier.module.load_state_dict(torch.load(save_folder + '/classifier.pt'), strict=False)
+def load_net(net, head, classifier, load_path):
+    print("Load pre-trained model!")
+    net.load_state_dict(torch.load(load_path + '/net.pt'), strict=False)
+    head.load_state_dict(torch.load(load_path + '/head.pt'), strict=False)
+    classifier.load_state_dict(torch.load(load_path + '/classifier.pt'), strict=False)
     return net, head, classifier
+
+
+def save_net(model, save_path):
+    print("Save checkpoints...")
+    torch.save(model[0].state_dict(), save_path + '/net.pt')
+    torch.save(model[1].state_dict(), save_path + '/head.pt')
+    torch.save(model[2].state_dict(), save_path + '/classifier.pt')
 
 
 def set_model_mode(mode, models):
@@ -144,7 +150,6 @@ def evaluate(model, loader):
             correct += pred.eq(tgt_labels.long().view_as(pred)).sum().item()
             total += tgt_labels.size(0)
     acc = (correct / total) * 100
-    print('Accuracy: {:.2f}%'.format(acc))
     set_model_mode('train', model)
 
     return acc

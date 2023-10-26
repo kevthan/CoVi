@@ -7,6 +7,7 @@ __all__ = ['ResNet', 'resnet50']
 
 model_urls = {
     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
 }
 
 
@@ -160,12 +161,22 @@ class ResNet50(nn.Module):
         x = self.encoder(x)
         return x
 
+class ResNet18(nn.Module):
+
+    def __init__(self):
+        super(ResNet18, self).__init__()
+        self.encoder = resnet18(True)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        return x
+
 
 class Head(nn.Module):
     def __init__(self):
         super(Head, self).__init__()
         self.head = nn.Sequential(
-            nn.Linear(2048, 256),
+            nn.Linear(512, 256),
             nn.ReLU()
         )
         init_weights(self)
@@ -179,16 +190,16 @@ class EmpLearner(nn.Module):
     def __init__(self):
         super(EmpLearner, self).__init__()
         self.emp_layer = nn.Sequential(
-            nn.Conv2d(2048 * 2, 2048 * 2, kernel_size=3, stride=1),
-            nn.BatchNorm2d(2048 * 2),
+            nn.Conv2d(512 * 2, 512 * 2, kernel_size=3, stride=1),
+            nn.BatchNorm2d(512 * 2),
             nn.ReLU(),
-            nn.Conv2d(2048 * 2, 2048, kernel_size=3, stride=1),
-            nn.BatchNorm2d(2048),
+            nn.Conv2d(512 * 2, 512, kernel_size=3, stride=1),
+            nn.BatchNorm2d(512),
             nn.ReLU(),
-            nn.Conv2d(2048, 2048, kernel_size=3, stride=1),
-            nn.BatchNorm2d(2048),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1),
+            nn.BatchNorm2d(512),
             nn.ReLU(),
-            nn.Conv2d(in_channels=2048, out_channels=11, kernel_size=1)
+            nn.Conv2d(in_channels=512, out_channels=11, kernel_size=1)
         )
         init_weights(self)
 
@@ -226,4 +237,11 @@ def resnet50(pretrained=False, **kwargs):
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+    return model
+
+
+def resnet18(pretrained=False, **kwargs):
+    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
     return model
